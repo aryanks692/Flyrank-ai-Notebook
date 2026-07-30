@@ -1,113 +1,411 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CTR Opportunity Scoring | FlyRank Search Intelligence</title>
 
-    <title>CTR Opportunity Scoring | FlyRank Search Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,500&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 950px;
-            margin: auto;
-            padding: 40px 25px;
-            line-height: 1.7;
-            color: #222;
-            background: #ffffff;
-        }
+<style>
+  :root{
+    --paper:      #fbfaf6;
+    --paper-dim:  #f2f0e9;
+    --ink:        #171a1f;
+    --ink-soft:   #4b5057;
+    --muted:      #8a8f96;
+    --line:       #e4e1d7;
+    --signal:     #b8871f;   /* opportunity / amber signal */
+    --signal-soft:#f3e6c8;
+    --deep:       #1f4d47;   /* search / teal-deep */
+    --deep-soft:  #e4ede9;
+    --good:       #2c6e49;
+    --radius:     3px;
+  }
 
-        h1 {
-            font-size: 42px;
-            line-height: 1.2;
-            margin-bottom: 10px;
-        }
+  *{ box-sizing:border-box; }
 
-        h2 {
-            margin-top: 55px;
-            border-bottom: 2px solid #ddd;
-            padding-bottom: 10px;
-        }
+  html{ scroll-behavior:smooth; }
 
-        h3 {
-            margin-top: 30px;
-        }
+  @media (prefers-reduced-motion: reduce){
+    html{ scroll-behavior:auto; }
+    *{ animation-duration:0.001ms !important; transition-duration:0.001ms !important; }
+  }
 
-        .subtitle {
-            color: #666;
-            font-size: 18px;
-            margin-bottom: 35px;
-        }
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"Inter", -apple-system, sans-serif;
+    font-size:16.5px;
+    line-height:1.7;
+    -webkit-font-smoothing:antialiased;
+  }
 
-        .abstract {
-            background: #f5f5f5;
-            padding: 25px;
-            border-radius: 10px;
-        }
+  a{ color:var(--deep); text-decoration-thickness:1px; text-underline-offset:2px; }
+  a:hover{ color:var(--signal); }
+  a:focus-visible, button:focus-visible{
+    outline:2px solid var(--signal);
+    outline-offset:3px;
+    border-radius:2px;
+  }
 
-        .result-box {
-            background: #f7f7f7;
-            padding: 20px;
-            margin: 25px 0;
-            border-radius: 8px;
-        }
+  ::selection{ background:var(--signal-soft); }
 
-        .result-number {
-            font-size: 28px;
-            font-weight: bold;
-        }
+  /* ---------- shell ---------- */
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 25px 0;
-        }
+  .shell{ max-width:920px; margin:0 auto; padding:0 28px 120px; }
 
-        th, td {
-            border: 1px solid #ddd;
-            padding: 10px;
-            text-align: left;
-        }
+  /* ---------- masthead ---------- */
 
-        th {
-            background: #f5f5f5;
-        }
+  .masthead{
+    max-width:920px;
+    margin:0 auto;
+    padding:64px 28px 46px;
+    border-bottom:1px solid var(--line);
+  }
 
-        img {
-            max-width: 100%;
-            height: auto;
-            margin: 20px 0;
-            border: 1px solid #ddd;
-        }
+  .kicker{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-family:"IBM Plex Mono", monospace;
+    font-size:12px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--deep);
+    margin-bottom:22px;
+  }
 
-        .footer {
-            margin-top: 60px;
-            padding-top: 20px;
-            border-top: 1px solid #ddd;
-            color: #666;
-        }
+  .kicker .dot{
+    width:7px; height:7px; border-radius:50%;
+    background:var(--signal);
+    box-shadow:0 0 0 3px var(--signal-soft);
+  }
 
-        a {
-            color: #1558a6;
-        }
-    </style>
+  h1{
+    font-family:"Newsreader", Georgia, serif;
+    font-weight:500;
+    font-size:clamp(34px, 5vw, 50px);
+    line-height:1.12;
+    letter-spacing:-.01em;
+    margin:0 0 18px;
+    max-width:15ch;
+  }
+
+  .subtitle{
+    color:var(--ink-soft);
+    font-size:17px;
+    max-width:56ch;
+    margin:0 0 26px;
+  }
+
+  .meta-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px 12px;
+    font-family:"IBM Plex Mono", monospace;
+    font-size:12.5px;
+    color:var(--muted);
+  }
+
+  .meta-row span{
+    border:1px solid var(--line);
+    background:var(--paper-dim);
+    padding:5px 10px;
+    border-radius:var(--radius);
+  }
+
+  /* ---------- section scaffolding ---------- */
+
+  h2{
+    display:flex;
+    align-items:baseline;
+    gap:14px;
+    font-family:"Newsreader", Georgia, serif;
+    font-weight:500;
+    font-size:29px;
+    letter-spacing:-.01em;
+    color:var(--ink);
+    margin:76px 0 26px;
+    padding-top:26px;
+    border-top:1px solid var(--line);
+  }
+
+  h2 .tag{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:13px;
+    font-weight:500;
+    color:var(--signal);
+    background:var(--signal-soft);
+    padding:3px 8px;
+    border-radius:var(--radius);
+    white-space:nowrap;
+  }
+
+  h3{
+    font-family:"Inter", sans-serif;
+    font-weight:600;
+    font-size:16.5px;
+    letter-spacing:.01em;
+    text-transform:uppercase;
+    color:var(--deep);
+    margin:34px 0 14px;
+  }
+
+  p{ margin:0 0 16px; color:var(--ink-soft); max-width:70ch; }
+  h1 + .subtitle{ color:var(--ink-soft); }
+
+  /* ---------- abstract ---------- */
+
+  .abstract{
+    background:var(--paper-dim);
+    border:1px solid var(--line);
+    border-left:3px solid var(--deep);
+    padding:28px 30px;
+    border-radius:var(--radius);
+  }
+  .abstract h2{ margin-top:0; padding-top:0; border-top:none; font-size:22px; }
+  .abstract p{ color:var(--ink); max-width:none; }
+
+  /* ---------- tables ---------- */
+
+  table{
+    width:100%;
+    border-collapse:collapse;
+    margin:22px 0 28px;
+    font-size:15px;
+  }
+
+  caption{
+    text-align:left;
+    font-family:"IBM Plex Mono", monospace;
+    font-size:12px;
+    color:var(--muted);
+    margin-bottom:8px;
+    caption-side:top;
+  }
+
+  th, td{
+    border-bottom:1px solid var(--line);
+    padding:12px 14px;
+    text-align:left;
+    vertical-align:top;
+  }
+
+  th{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:11.5px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--muted);
+    font-weight:500;
+    border-bottom:1px solid var(--ink);
+  }
+
+  tr:last-child td{ border-bottom:1px solid var(--line); }
+  td:first-child{ font-family:"IBM Plex Mono", monospace; color:var(--deep); font-weight:500; }
+
+  /* ---------- result boxes ---------- */
+
+  .result-box{
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:26px 28px;
+    margin:24px 0;
+    background:#fff;
+  }
+
+  .result-box p{ margin:0 0 4px; color:var(--muted); font-size:13.5px; }
+  .result-number{
+    font-family:"Newsreader", serif;
+    font-size:40px;
+    font-weight:500;
+    color:var(--ink);
+    line-height:1.15;
+    margin-bottom:14px;
+  }
+
+  /* scorecard: baseline vs model */
+
+  .scorecard{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:0;
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    overflow:hidden;
+    margin:24px 0 12px;
+    background:#fff;
+  }
+
+  .scorecard .cell{
+    padding:26px 28px;
+  }
+  .scorecard .cell + .cell{ border-left:1px solid var(--line); }
+  .scorecard .cell.win{ background:var(--deep-soft); }
+
+  .scorecard .label{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:11.5px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--muted);
+    margin-bottom:10px;
+  }
+
+  .scorecard .num{
+    font-family:"Newsreader", serif;
+    font-size:44px;
+    font-weight:500;
+    color:var(--ink);
+    line-height:1;
+    margin-bottom:14px;
+  }
+  .scorecard .cell.win .num{ color:var(--deep); }
+
+  .bar-track{
+    height:6px;
+    background:var(--line);
+    border-radius:4px;
+    overflow:hidden;
+  }
+  .bar-fill{ height:100%; background:var(--muted); border-radius:4px; }
+  .scorecard .cell.win .bar-fill{ background:var(--deep); }
+
+  .lift-strip{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-family:"IBM Plex Mono", monospace;
+    font-size:13px;
+    color:var(--good);
+    padding:14px 28px;
+    border-top:1px solid var(--line);
+    background:var(--paper-dim);
+  }
+  .lift-strip::before{ content:"↑"; font-size:15px; }
+
+  /* opportunity score formula */
+
+  .formula{
+    display:inline-flex;
+    align-items:center;
+    gap:10px;
+    font-family:"IBM Plex Mono", monospace;
+    font-size:19px;
+    color:var(--ink);
+    background:var(--paper-dim);
+    border:1px solid var(--line);
+    padding:16px 22px;
+    border-radius:var(--radius);
+  }
+  .formula .op{ color:var(--signal); font-weight:600; }
+
+  /* ---------- images ---------- */
+
+  figure{ margin:26px 0 30px; }
+  img{
+    max-width:100%;
+    height:auto;
+    display:block;
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    background:#fff;
+  }
+  figcaption{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:12px;
+    color:var(--muted);
+    margin-top:8px;
+  }
+
+  /* ---------- lists / playbook ---------- */
+
+  .playbook-row{
+    display:grid;
+    grid-template-columns:44px 1fr;
+    gap:18px;
+    padding:18px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .playbook-row:last-child{ border-bottom:none; }
+  .playbook-row .n{
+    font-family:"IBM Plex Mono", monospace;
+    color:var(--signal);
+    font-weight:600;
+    font-size:14px;
+  }
+  .playbook-row .action{
+    font-weight:600;
+    color:var(--ink);
+    margin-bottom:4px;
+  }
+  .playbook-row .reason{
+    color:var(--ink-soft);
+    font-size:14.5px;
+    margin:0;
+  }
+
+  /* ---------- limitations callout ---------- */
+
+  .note{
+    border-left:3px solid var(--signal);
+    background:var(--signal-soft);
+    padding:16px 20px;
+    border-radius:0 var(--radius) var(--radius) 0;
+    margin:20px 0;
+    color:var(--ink);
+  }
+  .note p{ color:var(--ink); margin:0; max-width:none; }
+
+  /* ---------- footer ---------- */
+
+  .footer{
+    margin-top:90px;
+    padding-top:26px;
+    border-top:1px solid var(--line);
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:10px;
+    font-family:"IBM Plex Mono", monospace;
+    font-size:12.5px;
+    color:var(--muted);
+  }
+
+  @media (max-width:620px){
+    .masthead{ padding:44px 20px 34px; }
+    h1{ font-size:32px; }
+    h2{ font-size:24px; margin-top:56px; }
+    .scorecard{ grid-template-columns:1fr; }
+    .scorecard .cell + .cell{ border-left:none; border-top:1px solid var(--line); }
+    .playbook-row{ grid-template-columns:32px 1fr; }
+  }
+</style>
 </head>
 
 <body>
 
-<h1>CTR Opportunity Scoring Using the FlyRank Search Intelligence Warehouse</h1>
+<header class="masthead">
+  <div class="kicker"><span class="dot"></span> FlyRank Search Intelligence &nbsp;/&nbsp; Capstone Report</div>
+  <h1>CTR Opportunity Scoring Using the FlyRank Search Intelligence Warehouse</h1>
+  <p class="subtitle">A repeatable scoring workflow for finding pages with strong search visibility but weak click capture — built on the FlyRank Search Intelligence Warehouse.</p>
+  <div class="meta-row">
+    <span>Lane: CTR / Engagement Opportunity Scoring</span>
+    <span>Model: Random Forest</span>
+    <span>Source: DuckDB</span>
+  </div>
+</header>
 
-<p class="subtitle">
-Search Intelligence Capstone · CTR / Engagement Opportunity Scoring
-</p>
-
+<div class="shell">
 
 <!-- ABSTRACT -->
-
 <div class="abstract">
-
 <h2>Abstract</h2>
-
 <p>
 This project investigates how search-performance data can be used to identify
 pages that may represent CTR optimization opportunities. Historical visibility
@@ -116,21 +414,17 @@ Intelligence Warehouse and used to train a Random Forest classifier for
 identifying pages experiencing a decline of more than 20% in impressions.
 The model was evaluated against a majority-class baseline using a held-out
 test set, while a separate CTR Opportunity Score ranked pages with high
-search visibility and relatively low click-through rates. The analysis found
-that query composition and historical impression volume were important
-predictive signals, while the opportunity-scoring framework identified
-high-visibility pages that could be prioritized for SEO review. The resulting
-workflow provides a repeatable decision-support framework for prioritizing
-CTR optimization opportunities without claiming causal effects on search
-performance.
+search visibility and relatively low click-through rates. Query composition
+and historical impression volume emerged as the strongest predictive
+signals, and the opportunity-scoring framework surfaced high-visibility
+pages worth prioritizing for SEO review. The result is a repeatable
+decision-support workflow for prioritizing CTR optimization — without
+claiming causal effects on search performance.
 </p>
-
 </div>
 
-
 <!-- INTRODUCTION -->
-
-<h2>1. Introduction / Problem Statement</h2>
+<h2><span class="tag">§01</span> Introduction / Problem Statement</h2>
 
 <p>
 Search visibility does not necessarily translate into clicks. A page can
@@ -153,10 +447,8 @@ query-composition signals can help identify pages experiencing significant
 changes in visibility.
 </p>
 
-
 <!-- DATA -->
-
-<h2>2. Data</h2>
+<h2><span class="tag">§02</span> Data</h2>
 
 <p>
 This study uses the FlyRank Search Intelligence Warehouse release accessed
@@ -165,89 +457,62 @@ aggregates observations at the content level before applying machine
 learning and opportunity scoring.
 </p>
 
-<h3>Data Sources</h3>
-
+<h3>Data sources</h3>
 <table>
-    <tr>
-        <th>Table</th>
-        <th>Purpose</th>
-    </tr>
-
-    <tr>
-        <td>fact_content_daily_performance</td>
-        <td>
-            Historical content-level search-performance metrics.
-        </td>
-    </tr>
-
-    <tr>
-        <td>fact_content_query_90d</td>
-        <td>
-            Query-level signals describing the distribution and composition
-            of search visibility.
-        </td>
-    </tr>
+  <caption>fact tables used for feature engineering</caption>
+  <tr><th>Table</th><th>Purpose</th></tr>
+  <tr>
+    <td>fact_content_daily_performance</td>
+    <td>Historical content-level search-performance metrics.</td>
+  </tr>
+  <tr>
+    <td>fact_content_query_90d</td>
+    <td>Query-level signals describing the distribution and composition of search visibility.</td>
+  </tr>
 </table>
 
-<h3>Privacy and Exclusions</h3>
-
+<h3>Privacy &amp; exclusions</h3>
 <p>
 The analysis uses anonymized data. Client names, domains, URLs, private
 queries, credentials, and other identifying information are not exposed
 in the public analysis.
 </p>
 
-
 <!-- METHODOLOGY -->
+<h2><span class="tag">§03</span> Methodology</h2>
 
-<h2>3. Methodology</h2>
-
-<h3>Feature Engineering</h3>
-
+<h3>Feature engineering</h3>
 <p>
 Content-level features were aggregated using DuckDB rather than loading
 the complete warehouse into memory. Historical impression data were used
 to construct visibility features, while query-level data were used to
 capture query diversity and concentration.
 </p>
-
 <p>
 The model uses features including historical impressions, visible query
 count, rare-query share, anonymized-query share, and top-query share.
 </p>
 
-<h3>Prediction Label</h3>
-
+<h3>Prediction label</h3>
 <p>
 The classification label identifies pages whose impressions declined by
 more than 20% between the previous and current observation windows:
 </p>
-
 <div class="result-box">
-
-<p>
-<strong>Declining page:</strong>
-current impressions &lt; 80% of previous impressions
-</p>
-
+  <p>Declining page</p>
+  <div class="result-number">current impressions &lt; 80% of previous</div>
 </div>
 
-<h3>Machine Learning Model</h3>
-
+<h3>Machine learning model</h3>
 <p>
 A Random Forest classifier was selected as the primary machine learning
 model because it can capture non-linear relationships between search
 features and performance changes while also providing feature-importance
-measures.
+measures. It was evaluated against a simple majority-class baseline using
+a held-out test set.
 </p>
 
-<p>
-The Random Forest was evaluated against a simple majority-class baseline
-using a held-out test set.
-</p>
-
-<h3>Leakage Check</h3>
-
+<h3>Leakage check</h3>
 <p>
 The model features were constructed from historical observations, while
 the target label represents the subsequent performance window. This
@@ -255,67 +520,54 @@ separation helps reduce the risk of information from the prediction period
 being included in the model inputs.
 </p>
 
-<h3>Two-Part Analysis</h3>
-
+<h3>Two-part analysis</h3>
 <p>
 This capstone uses two complementary analyses. First, the Random Forest
 classifier evaluates whether historical search-performance and
 query-composition features can identify pages experiencing a decline of
 more than 20% in impressions. Second, a separate CTR Opportunity Score
 ranks pages with high search visibility and relatively low click-through
-rates.
-</p>
-
-<p>
-The predictive model evaluates historical search signals, while the
-Opportunity Score provides the practical ranking used to generate CTR
+rates. The predictive model evaluates historical search signals, while
+the Opportunity Score provides the practical ranking used to generate CTR
 optimization recommendations.
 </p>
 
-
 <!-- RESULTS -->
+<h2><span class="tag">§04</span> Results</h2>
 
-<h2>4. Results</h2>
+<h3>Model vs. baseline</h3>
 
-<h3>Model vs Baseline</h3>
-
-<div class="result-box">
-
-<p>Majority-class baseline</p>
-<p class="result-number">63.3%</p>
-
-<p>Random Forest accuracy</p>
-<p class="result-number">65.7%</p>
-
-<p>
-The Random Forest improved on the baseline by
-<strong>2.4 percentage points</strong>.
-</p>
-
+<div class="scorecard">
+  <div class="cell">
+    <div class="label">Majority-class baseline</div>
+    <div class="num">63.3%</div>
+    <div class="bar-track"><div class="bar-fill" style="width:63.3%"></div></div>
+  </div>
+  <div class="cell win">
+    <div class="label">Random Forest accuracy</div>
+    <div class="num">65.7%</div>
+    <div class="bar-track"><div class="bar-fill" style="width:65.7%"></div></div>
+  </div>
 </div>
+<div class="lift-strip">2.4 percentage point lift over the majority-class baseline</div>
 
-<p>
+<p style="margin-top:22px;">
 The Random Forest achieved 65.7% accuracy compared with 63.3% for the
 majority-class baseline on the same held-out test set. The improvement is
 modest, indicating that the model contains useful predictive information
 but should not be treated as a highly accurate production classifier.
 </p>
 
+<figure>
+  <h3>Model vs. majority-class baseline</h3>
+  <img src="model_vs_baseline.png" alt="Random Forest compared with majority-class baseline">
+</figure>
 
-<!-- CHART 1 -->
-
-<h3>Model vs Majority-Class Baseline</h3>
-
-<img src="model_vs_baseline.png"
-     alt="Random Forest compared with majority-class baseline">
-
-
-<!-- FEATURE IMPORTANCE -->
-
-<h3>Feature Importance</h3>
-
-<img src="feature_importance.png"
-     alt="Random Forest feature importance">
+<figure>
+  <h3>Feature importance</h3>
+  <img src="feature_importance.png" alt="Random Forest feature importance">
+  <figcaption>Ranked by contribution to the Random Forest classifier</figcaption>
+</figure>
 
 <p>
 The feature importance analysis indicates that query composition and
@@ -325,38 +577,23 @@ were particularly influential, followed by historical impression volume
 and query concentration.
 </p>
 
-
-<!-- OPPORTUNITY SCORE -->
-
 <h3>CTR Opportunity Score</h3>
+<p>To prioritize pages for CTR optimization, an Opportunity Score was calculated using:</p>
 
-<p>
-To prioritize pages for CTR optimization, an Opportunity Score was
-calculated using:
-</p>
+<div class="formula">Opportunity Score <span class="op">=</span> Impressions <span class="op">×</span> (1 − CTR)</div>
 
-<div class="result-box">
-
-<p class="result-number">
-Opportunity Score = Impressions × (1 − CTR)
-</p>
-
-</div>
-
-<p>
+<p style="margin-top:22px;">
 Pages with high impression volume and relatively low CTR receive higher
 scores. These pages represent potential optimization opportunities
 because even a small improvement in CTR could potentially result in
 additional clicks from existing search visibility.
 </p>
 
-
-<!-- TOP OPPORTUNITIES -->
-
-<h3>Top CTR Opportunity Pages</h3>
-
-<img src="top_opportunities.png"
-     alt="Top 20 CTR opportunity pages">
+<figure>
+  <h3>Top CTR opportunity pages</h3>
+  <img src="top_opportunities.png" alt="Top 20 CTR opportunity pages">
+  <figcaption>Top 20 pages ranked by Opportunity Score</figcaption>
+</figure>
 
 <p>
 The highest-ranked pages should be considered for further SEO review.
@@ -365,15 +602,15 @@ improvements, structured-data review, search-intent analysis, and
 content refinement.
 </p>
 
-
 <!-- LIMITATIONS -->
+<h2><span class="tag">§05</span> Limitations &amp; Honest Framing</h2>
 
-<h2>5. Limitations & Honest Framing</h2>
-
+<div class="note">
 <p>
 This analysis is observational and does not establish causal relationships
 between search-performance signals and CTR or impression changes.
 </p>
+</div>
 
 <p>
 The Random Forest provides only a modest improvement over the
@@ -395,116 +632,73 @@ client-identifying information, private queries, domains, URLs, or
 credentials.
 </p>
 
-
 <!-- RECOMMENDATIONS -->
+<h2><span class="tag">§06</span> Ranked Recommendations</h2>
+<h3>Recommended action playbook</h3>
 
-<h2>6. Ranked Recommendations</h2>
-
-<h3>Recommended Action Playbook</h3>
-
-<table>
-
-<tr>
-    <th>Priority</th>
-    <th>Action</th>
-    <th>Reason</th>
-</tr>
-
-<tr>
-    <td>1</td>
-    <td>Review high-impression, low-CTR pages</td>
-    <td>
-        These pages have substantial existing search visibility but
-        comparatively weak click capture.
-    </td>
-</tr>
-
-<tr>
-    <td>2</td>
-    <td>Review page titles</td>
-    <td>
-        Improve relevance and clarity of the search-result presentation.
-    </td>
-</tr>
-
-<tr>
-    <td>3</td>
-    <td>Improve meta descriptions</td>
-    <td>
-        Strengthen the value proposition presented to search users.
-    </td>
-</tr>
-
-<tr>
-    <td>4</td>
-    <td>Review search intent alignment</td>
-    <td>
-        Determine whether the content satisfies the intent represented
-        by its search visibility.
-    </td>
-</tr>
-
-<tr>
-    <td>5</td>
-    <td>Monitor performance</td>
-    <td>
-        Track CTR and impressions after any optimization work.
-    </td>
-</tr>
-
-</table>
-
+<div class="playbook">
+  <div class="playbook-row">
+    <div class="n">01</div>
+    <div>
+      <p class="action">Review high-impression, low-CTR pages</p>
+      <p class="reason">These pages have substantial existing search visibility but comparatively weak click capture.</p>
+    </div>
+  </div>
+  <div class="playbook-row">
+    <div class="n">02</div>
+    <div>
+      <p class="action">Review page titles</p>
+      <p class="reason">Improve relevance and clarity of the search-result presentation.</p>
+    </div>
+  </div>
+  <div class="playbook-row">
+    <div class="n">03</div>
+    <div>
+      <p class="action">Improve meta descriptions</p>
+      <p class="reason">Strengthen the value proposition presented to search users.</p>
+    </div>
+  </div>
+  <div class="playbook-row">
+    <div class="n">04</div>
+    <div>
+      <p class="action">Review search intent alignment</p>
+      <p class="reason">Determine whether the content satisfies the intent represented by its search visibility.</p>
+    </div>
+  </div>
+  <div class="playbook-row">
+    <div class="n">05</div>
+    <div>
+      <p class="action">Monitor performance</p>
+      <p class="reason">Track CTR and impressions after any optimization work.</p>
+    </div>
+  </div>
+</div>
 
 <!-- REPRODUCIBILITY -->
-
-<h2>7. Reproducibility</h2>
-
+<h2><span class="tag">§07</span> Reproducibility</h2>
 <p>
 The complete analysis workflow is contained in the capstone notebook.
 The notebook includes the DuckDB data extraction, feature engineering,
 model training, evaluation, CTR opportunity scoring, and ranked
 recommendations.
 </p>
-
-<p>
-The source notebook and supporting files are available in the project's
-GitHub repository.
-</p>
-
-<p>
-<a href="https://github.com/aryanks692/Flyrank-ai-Notebook">
-View the GitHub repository
-</a>
-</p>
-
+<p>The source notebook and supporting files are available in the project's GitHub repository.</p>
+<p><a href="https://github.com/aryanks692/Flyrank-ai-Notebook">View the GitHub repository →</a></p>
 
 <!-- ACKNOWLEDGMENTS -->
-
-<h2>8. Acknowledgments & Data Credit</h2>
-
-<p>
-Built on the FlyRank ML Internship dataset.
-</p>
-
-<p>
-The author acknowledges FlyRank for providing the anonymized search
-intelligence dataset used in this analysis.
-</p>
-
-<p>
-<a href="https://flyrank.ai">
-FlyRank
-</a>
-</p>
-
+<h2><span class="tag">§08</span> Acknowledgments &amp; Data Credit</h2>
+<p>Built on the FlyRank ML Internship dataset.</p>
+<p>The author acknowledges FlyRank for providing the anonymized search intelligence dataset used in this analysis.</p>
+<p><a href="https://flyrank.ai">FlyRank →</a></p>
 
 <div class="footer">
-
-<p>
-CTR Opportunity Scoring · Search Intelligence Capstone
-</p>
+  <span>CTR Opportunity Scoring · Search Intelligence Capstone</span>
+  <span>Random Forest · DuckDB · FlyRank Warehouse</span>
+</div>
 
 </div>
 
 </body>
 </html>
+
+
